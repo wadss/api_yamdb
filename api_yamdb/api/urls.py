@@ -14,34 +14,34 @@ from api.views import (
 )
 
 
-router = routers.DefaultRouter()
+router_v1 = routers.DefaultRouter()
 
-router.register(
+router_v1.register(
     r'users',
     UserViewSet,
     basename='user,'
 )
-router.register(
+router_v1.register(
     r'categories',
     CategoryViewSet,
     basename='category',
 )
-router.register(
+router_v1.register(
     r'genres',
     GenreViewSet,
     basename='genre',
 )
-router.register(
+router_v1.register(
     r'titles',
     TitleViewSet,
     basename='title'
 )
-router.register(
+router_v1.register(
     r'titles/(?P<title_id>\d+)/reviews',
     ReviewViewSet,
     basename='review',
 )
-router.register(
+router_v1.register(
     r'titles/(?P<title_id>\d+)'
     r'/reviews/(?P<review_id>\d+)'
     r'/comments',
@@ -65,5 +65,5 @@ urlpatterns = [
         UserMeView.as_view(),
         name='me'
     ),
-    path('', include(router.urls)),
+    path('', include(router_v1.urls)),
 ]

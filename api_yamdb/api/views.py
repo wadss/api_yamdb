@@ -1,14 +1,13 @@
-from django.db.models import Avg
+from django.db.models import Avg, Q
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 
-from rest_framework import mixins, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import (
     SAFE_METHODS,
-    AllowAny,
     IsAuthenticated,
     IsAuthenticatedOrReadOnly,
 )
@@ -43,15 +42,17 @@ from .serializers import (
     ReviewSerializer,
     CommentSerializer
 )
+from .mixins import CreateListDestroyMixin
 from users.models import User
 
 
 class UserMeView(APIView):
+    """View-класс для роута 'users/me'."""
 
     permission_classes = (
         IsAuthenticated,
     )
-    
+
     def get(self, request):
         user = get_object_or_404(
             User,
@@ -62,7 +63,7 @@ class UserMeView(APIView):
             serializer.data,
             status=status.HTTP_200_OK,
         )
-    
+
     def patch(self, request):
         user = get_object_or_404(
             User,
@@ -82,6 +83,7 @@ class UserMeView(APIView):
 
 
 class UserViewSet(ModelViewSet):
+    """Viewset для роута 'users'."""
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -95,18 +97,28 @@ class UserViewSet(ModelViewSet):
     search_fields = ('username',)
     ordering = ('username',)
 
+    def create(self, request, *args, **kwargs):
+        q = Q()
+        if 'username' in request.data:
+            q |= Q(username=request.data['username'])
+        if 'email' in request.data:
+            q |= Q(email=request.data['email'])
+        if User.objects.filter(q).exists():
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return super(UserViewSet, self).create(request, *args, **kwargs)
+
 
 class ObtainJWTTokenViewSet(CreateAPIView):
+    """View-класс для роута 'auth/token/'."""
 
     serializer_class = ObtainJWTTokenSerializer
-    permission_classes = (AllowAny,)
 
     def get_queryset(self):
         return get_object_or_404(
             User,
             username=self.kwargs.get('username')
         )
-    
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -122,15 +134,14 @@ class ObtainJWTTokenViewSet(CreateAPIView):
                 status=status.HTTP_200_OK,
             )
         return Response(
-            serializer.errors, 
+            serializer.errors,
             status=status.HTTP_400_BAD_REQUEST,
         )
 
 
 class SignUpView(APIView):
+    """View-класс для роута 'auth/signup/'."""
 
-    permission_classes = (AllowAny,)
-    
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         username = request.data.get('username')
@@ -139,7 +150,7 @@ class SignUpView(APIView):
             username=username,
             email=email,
         ).first()
-        
+
         if user:
             confirmation_code = default_token_generator.make_token(user)
             send_mail(
@@ -156,10 +167,10 @@ class SignUpView(APIView):
                 'Код подтверждения отправлен на почту.'
             )
             return Response(
-                message, 
+                message,
                 status=status.HTTP_200_OK
             )
-        
+
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             username = serializer.validated_data['username']
@@ -175,37 +186,27 @@ class SignUpView(APIView):
                 from_email=None,
                 recipient_list=[user.email],
             )
-            
+
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class CreateListDestroyMixin(
-    mixins.CreateModelMixin,
-    mixins.ListModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet,
-):
-    permission_classes = (
-        IsAuthenticatedOrReadOnly,
-        IsAdminOrReadOnly,
-    )
-    lookup_field = 'slug'
-    filter_backends = (SearchFilter,)
-    search_fields = ('name',)
-
-
 class CategoryViewSet(CreateListDestroyMixin):
+    """Viewset для роута 'categories'."""
+
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
 class GenreViewSet(CreateListDestroyMixin):
+    """Viewset для роута 'genres'."""
+
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
 
 class TitleViewSet(viewsets.ModelViewSet):
+    """Viewset для роута 'titles'."""
 
     queryset = Title.objects.annotate(
         rating=Avg('reviews__score'),
@@ -217,10 +218,10 @@ class TitleViewSet(viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
     http_method_names = (
-        'get', 
-        'post', 
-        'delete', 
-        'patch'
+        'get',
+        'post',
+        'delete',
+        'patch',
     )
 
     def get_serializer_class(self):
@@ -230,16 +231,18 @@ class TitleViewSet(viewsets.ModelViewSet):
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    
+    """Viewset для роута 'reviews'."""
+
     serializer_class = ReviewSerializer
     permission_classes = (
+        IsAuthenticatedOrReadOnly,
         IsAuthorModeratorOrAdmin,
     )
     http_method_names = (
         'get',
         'post',
         'delete',
-        'patch'
+        'patch',
     )
 
     def _get_title(self):
@@ -248,19 +251,20 @@ class ReviewViewSet(viewsets.ModelViewSet):
             Title,
             id=title_id
         )
-    
+
     def perform_create(self, serializer):
         serializer.save(
             author=self.request.user,
             title = self._get_title(),
         )
-    
+
     def get_queryset(self):
         return self._get_title().reviews.all()
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-    
+    """Viewset для роута 'comments'."""
+
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = (
@@ -268,10 +272,10 @@ class CommentViewSet(viewsets.ModelViewSet):
         IsAuthorModeratorOrAdmin,
     )
     http_method_names = (
-        'get', 
-        'post', 
-        'delete', 
-        'patch'
+        'get',
+        'post',
+        'delete',
+        'patch',
     )
 
     def _get_review(self):
@@ -286,13 +290,13 @@ class CommentViewSet(viewsets.ModelViewSet):
             id=review_id,
             title=title,
         )
-    
+
     def perform_create(self, serializer):
         serializer.save(
             author=self.request.user,
             review=self._get_review()
         )
-    
+
     def get_queryset(self):
         return Comment.objects.filter(
             review=self._get_review(),

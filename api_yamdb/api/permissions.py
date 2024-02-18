@@ -1,9 +1,8 @@
 from rest_framework import permissions
 
-from users.models import ROLE_CHOICES
-
 
 class IsAdminUser(permissions.BasePermission):
+    """Проверка роли пользователя на администратора."""
 
     message = 'Данный запрос недоступен для вас.'
 
@@ -12,6 +11,8 @@ class IsAdminUser(permissions.BasePermission):
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
+    """Проверка роли пользователя на администратора,
+     либо только чтение."""
 
     message = 'Данный запрос недоступен для вас.'
 
@@ -21,6 +22,8 @@ class IsAdminOrReadOnly(permissions.BasePermission):
 
 
 class IsAuthorModeratorOrAdmin(permissions.BasePermission):
+    """Проверка роли пользователя на автора, модератора или
+     администратора, либо только чтение."""
 
     message = 'Данный запрос недоступен для вас.'
 
@@ -33,5 +36,4 @@ class IsAuthorModeratorOrAdmin(permissions.BasePermission):
                 or request.user.is_admin
                 or request.user.is_superuser
             )
-            
         )

@@ -7,11 +7,13 @@ from reviews.models import Category, Genre, Title, Review, Comment
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'users'."""
+
     username = serializers.RegexField(
-        regex=r'^[\w.@+-]+\Z', 
+        regex=r'^[\w.@+-]+\Z',
         max_length=150,
     )
-    
+
     class Meta:
         model = User
         fields = (
@@ -25,11 +27,14 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserMeSerializer(UserSerializer):
+    """Сериалайзер для роута 'users/me'."""
 
     role = serializers.CharField(read_only=True)
 
 
 class SignUpSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'auth/signup/'."""
+
     username = serializers.CharField(
         required=True,
         max_length=150,
@@ -69,7 +74,7 @@ class SignUpSerializer(serializers.ModelSerializer):
                 'никнейма запрещено'
             )
         return username
-    
+
     class Meta:
         model = User
         fields = (
@@ -79,14 +84,17 @@ class SignUpSerializer(serializers.ModelSerializer):
 
 
 class ObtainJWTTokenSerializer(serializers.Serializer):
+    """Сериалайзер для роута 'auth/token/'."""
+    
     username = serializers.RegexField(
-        regex=r'^[\w.@+-]+\Z', 
+        regex=r'^[\w.@+-]+\Z',
         max_length=150,
     )
     confirmation_code = serializers.CharField(required=True)
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'categories'."""
 
     class Meta:
         model = Category
@@ -94,6 +102,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class GenreSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'genres'."""
 
     class Meta:
         model = Genre
@@ -101,6 +110,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleSerializer(serializers.ModelSerializer):
+    """Миксин-сериалайзер для роута 'titles'."""
 
     rating = serializers.IntegerField(read_only=True)
 
@@ -118,6 +128,7 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class TitleReadSerializer(TitleSerializer):
+    """Сериалайзер для роута 'titles' на чтение."""
 
     genre = GenreSerializer(
         read_only=True,
@@ -127,6 +138,7 @@ class TitleReadSerializer(TitleSerializer):
 
 
 class TitleWriteSerializer(TitleSerializer):
+    """Сериалайзер для роута 'titles' на запись."""
 
     category = serializers.SlugRelatedField(
         slug_field='slug',
@@ -141,6 +153,7 @@ class TitleWriteSerializer(TitleSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'reviews'."""
 
     author = serializers.StringRelatedField(
         read_only=True,
@@ -178,6 +191,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'comments'."""
 
     author = serializers.SlugRelatedField(
         read_only=True,
@@ -192,4 +206,3 @@ class CommentSerializer(serializers.ModelSerializer):
             'author',
             'pub_date',
         )
-    
