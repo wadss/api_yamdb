@@ -85,7 +85,7 @@ class SignUpSerializer(serializers.ModelSerializer):
 
 class ObtainJWTTokenSerializer(serializers.Serializer):
     """Сериалайзер для роута 'auth/token/'."""
-    
+
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+\Z',
         max_length=150,
