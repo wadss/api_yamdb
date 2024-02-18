@@ -1,5 +1,3 @@
-import datetime as dt
-
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -9,7 +7,7 @@ from .validators import validate_year
 
 class Category(models.Model):
     """Модель категории."""
-    
+
     name = models.CharField(
         verbose_name='Название категории',
         max_length=256,
@@ -22,7 +20,7 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
-    
+
     class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
@@ -43,7 +41,7 @@ class Genre(models.Model):
 
     def __str__(self):
         return self.name
-    
+
     class Meta:
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
@@ -79,15 +77,15 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name
-    
+
     class Meta:
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
-    
+
 
 class GenreTitle(models.Model):
     """Модель связи жанров и произведений."""
-    
+
     genre = models.ForeignKey(
         Genre,
         on_delete=models.CASCADE,
@@ -96,7 +94,7 @@ class GenreTitle(models.Model):
         Title,
         on_delete=models.CASCADE,
     )
-    
+
     def __str__(self):
         return f'{self.genre} - {self.title}'
 
@@ -175,7 +173,7 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.text
-    
+
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'

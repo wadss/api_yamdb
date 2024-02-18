@@ -1,6 +1,3 @@
-import re
-
-from django.shortcuts import get_object_or_404
 from django.core.validators import RegexValidator
 
 from rest_framework import serializers
@@ -10,6 +7,13 @@ from reviews.models import Category, Genre, Title, Review, Comment
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'users'."""
+
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+\Z',
+        max_length=150,
+    )
+
     class Meta:
         model = User
         fields = (
@@ -22,18 +26,46 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
+class UserMeSerializer(UserSerializer):
+    """Сериалайзер для роута 'users/me'."""
+
+    role = serializers.CharField(read_only=True)
+
+
 class SignUpSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'auth/signup/'."""
+
     username = serializers.CharField(
         required=True,
         max_length=150,
-        validators=(
+        validators=[
             RegexValidator(
                 regex=r'^[\w.@+-]+\Z',
                 message='Никнейм должен быть '
                 'буквенно-цифровым'
             )
-        )
+        ],
     )
+
+    def validate(self, data):
+        if User.objects.filter(
+            username=data.get('username'),
+            email=data.get('email'),
+        ):
+            return data
+        elif User.objects.filter(
+            username=data.get('username')
+        ):
+            raise serializers.ValidationError(
+                'Никнейм уже занят'
+            )
+        elif User.objects.filter(
+            email=data.get('email')
+        ):
+            raise serializers.ValidationError(
+                'Эл. почта уже занята'
+            )
+        return data
 
     def validate_username(self, username):
         if username == 'me':
@@ -42,7 +74,7 @@ class SignUpSerializer(serializers.ModelSerializer):
                 'никнейма запрещено'
             )
         return username
-    
+
     class Meta:
         model = User
         fields = (
@@ -51,28 +83,34 @@ class SignUpSerializer(serializers.ModelSerializer):
         )
 
 
-class ObtainJWTTokenSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(required=True)
+class ObtainJWTTokenSerializer(serializers.Serializer):
+    """Сериалайзер для роута 'auth/token/'."""
+    
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+\Z',
+        max_length=150,
+    )
     confirmation_code = serializers.CharField(required=True)
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    
+    """Сериалайзер для роута 'categories'."""
+
     class Meta:
         model = Category
         fields = ('name', 'slug')
-        lookup_field = 'slug'
 
 
 class GenreSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'genres'."""
 
     class Meta:
         model = Genre
         fields = ('name', 'slug')
-        lookup_field = 'slug'
 
 
 class TitleSerializer(serializers.ModelSerializer):
+    """Миксин-сериалайзер для роута 'titles'."""
 
     rating = serializers.IntegerField(read_only=True)
 
@@ -90,6 +128,7 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class TitleReadSerializer(TitleSerializer):
+    """Сериалайзер для роута 'titles' на чтение."""
 
     genre = GenreSerializer(
         read_only=True,
@@ -99,6 +138,7 @@ class TitleReadSerializer(TitleSerializer):
 
 
 class TitleWriteSerializer(TitleSerializer):
+    """Сериалайзер для роута 'titles' на запись."""
 
     category = serializers.SlugRelatedField(
         slug_field='slug',
@@ -113,13 +153,30 @@ class TitleWriteSerializer(TitleSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'reviews'."""
 
-    author = serializers.StringRelatedField(read_only=True)
+    author = serializers.StringRelatedField(
+        read_only=True,
+    )
     title = serializers.SlugRelatedField(
         slug_field='id',
         many=False,
         read_only=True,
     )
+
+    def validate(self, data):
+        if not self.context.get('request').method == 'POST':
+            return data
+        author = self.context.get('request').user
+        title_id = self.context.get('view').kwargs.get('title_id')
+        if Review.objects.filter(
+            author=author,
+            title=title_id,
+        ).exists():
+            raise serializers.ValidationError(
+                'Отзыв на это произведение уже оставлен'
+            )
+        return data
 
     class Meta:
         model = Review
@@ -128,5 +185,24 @@ class ReviewSerializer(serializers.ModelSerializer):
             'text',
             'author',
             'score',
+            'pub_date',
+            'title',
+        )
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'comments'."""
+
+    author = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='username',
+    )
+
+    class Meta:
+        model = Comment
+        fields = (
+            'id',
+            'text',
+            'author',
             'pub_date',
         )
