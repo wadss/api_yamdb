@@ -1,6 +1,14 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+from api_yamdb.settings import (
+    MAX_LENGTH_OF_NAME,
+    MAX_LENGTH_OF_SLUG,
+    MIN_VALUE_OF_SCORE,
+    MAX_VALUE_OF_SCORE,
+    MESSAGE_FOR_MIN_SCORE,
+    MESSAGE_FOR_MAX_SCORE,
+)
 from users.models import User
 from .validators import validate_year
 
@@ -10,20 +18,21 @@ class Category(models.Model):
 
     name = models.CharField(
         verbose_name='Название категории',
-        max_length=256,
+        max_length=MAX_LENGTH_OF_NAME,
     )
     slug = models.SlugField(
         verbose_name='Слаг категории',
         unique=True,
-        max_length=50,
+        max_length=MAX_LENGTH_OF_SLUG,
     )
-
-    def __str__(self):
-        return self.name
 
     class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name
 
 
 class Genre(models.Model):
@@ -31,20 +40,21 @@ class Genre(models.Model):
 
     name = models.CharField(
         verbose_name='Название жанра',
-        max_length=256,
+        max_length=MAX_LENGTH_OF_NAME,
     )
     slug = models.SlugField(
         verbose_name='Слаг жанра',
         unique=True,
-        max_length=50,
+        max_length=MAX_LENGTH_OF_SLUG,
     )
-
-    def __str__(self):
-        return self.name
 
     class Meta:
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name
 
 
 class Title(models.Model):
@@ -52,9 +62,9 @@ class Title(models.Model):
 
     name = models.CharField(
         verbose_name='Название произведения',
-        max_length=256,
+        max_length=MAX_LENGTH_OF_NAME,
     )
-    year = models.IntegerField(
+    year = models.SmallIntegerField(
         verbose_name='Год выпуска произведения',
         validators=(validate_year,),
     )
@@ -64,7 +74,8 @@ class Title(models.Model):
     )
     genre = models.ManyToManyField(
         Genre,
-        through='GenreTitle'
+        through='GenreTitle',
+        verbose_name='Жанр',
     )
     category = models.ForeignKey(
         Category,
@@ -75,12 +86,13 @@ class Title(models.Model):
         related_name='titles',
     )
 
-    def __str__(self):
-        return self.name
-
     class Meta:
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name
 
 
 class GenreTitle(models.Model):
@@ -89,11 +101,18 @@ class GenreTitle(models.Model):
     genre = models.ForeignKey(
         Genre,
         on_delete=models.CASCADE,
+        verbose_name='Жанр',
     )
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
+        verbose_name='Произведение',
     )
+
+    class Meta:
+        verbose_name = "Произведение - Жанр"
+        verbose_name_plural = "Произведения - Жанры"
+        ordering = ('title',)
 
     def __str__(self):
         return f'{self.genre} - {self.title}'
@@ -122,12 +141,12 @@ class Review(models.Model):
         default=0,
         validators=(
             MinValueValidator(
-                1,
-                message='Оценка меньше допустимого',
+                MIN_VALUE_OF_SCORE,
+                message=MESSAGE_FOR_MIN_SCORE,
             ),
             MaxValueValidator(
-                10,
-                message='Оценка больше допустимого'
+                MAX_VALUE_OF_SCORE,
+                message=MESSAGE_FOR_MAX_SCORE,
             ),
         ),
     )
@@ -146,6 +165,10 @@ class Review(models.Model):
                 name='unique_review',
             )
         ]
+
+    def __str__(self):
+        return (f'Отзыв на {self.title} '
+        f'от автора {self.author}')
 
 
 class Comment(models.Model):
@@ -171,10 +194,10 @@ class Comment(models.Model):
         auto_now_add=True,
     )
 
-    def __str__(self):
-        return self.text
-
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
         ordering = ('-pub_date',)
+
+    def __str__(self):
+        return self.text

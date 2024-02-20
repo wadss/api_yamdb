@@ -1,9 +1,17 @@
-from django.core.validators import RegexValidator
+from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.core.mail import send_mail
 from django.db.models import Avg
+from django.contrib.auth.tokens import default_token_generator
+
 from rest_framework import serializers
 
-from users.models import User
 from reviews.models import Category, Genre, Title, Review, Comment
+from api_yamdb.settings import (
+    MAX_LENGTH_OF_USERNAME, 
+    MAX_LENGTH_OF_EMAIL,
+)
+from users.models import User
+from .validators import validate_username
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -32,16 +40,40 @@ class SignUpSerializer(serializers.ModelSerializer):
 
     username = serializers.CharField(
         required=True,
-        max_length=150,
+        max_length=MAX_LENGTH_OF_USERNAME,
         validators=[
-            RegexValidator(
-                regex=r'^[\w.@+-]+\Z',
+            UnicodeUsernameValidator(
                 message='Никнейм должен быть '
                 'буквенно-цифровым'
-            )
+            ),
+            validate_username,
         ],
     )
+    email = serializers.EmailField(
+        required=True,
+        max_length=MAX_LENGTH_OF_EMAIL,
+    )
 
+    def create(self, validated_data):
+        username = validated_data['username']
+        email = validated_data['email']
+
+        user, created = User.objects.get_or_create(email=email, defaults={'username': username})
+
+        if created:
+            confirmation_code = default_token_generator.make_token(user)
+            send_mail(
+                subject='Регистрация на YaMDb',
+                message=(
+                    f'Здравствуйте, {user.username}. '
+                    f'Ваш код подтверждения: {confirmation_code}'
+                ),
+                from_email=None,
+                recipient_list=[user.email],
+            )
+
+        return user
+    
     def validate(self, data):
         if User.objects.filter(
             username=data.get('username'),
@@ -62,14 +94,6 @@ class SignUpSerializer(serializers.ModelSerializer):
             )
         return data
 
-    def validate_username(self, username):
-        if username == 'me':
-            raise serializers.ValidationError(
-                'Использовать имя "me" в качестве '
-                'никнейма запрещено'
-            )
-        return username
-
     class Meta:
         model = User
         fields = (
@@ -83,7 +107,14 @@ class ObtainJWTTokenSerializer(serializers.Serializer):
 
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+\Z',
-        max_length=150,
+        max_length=MAX_LENGTH_OF_USERNAME,
+        validators=[
+            UnicodeUsernameValidator(
+                message='Никнейм должен быть '
+                'буквенно-цифровым'
+            ),
+            validate_username,
+        ],
     )
     confirmation_code = serializers.CharField(required=True)
 

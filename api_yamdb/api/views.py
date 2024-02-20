@@ -1,10 +1,11 @@
-from django.db.models import Avg, Q
+from django.db.models import Avg
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import (
     SAFE_METHODS,
@@ -14,7 +15,6 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework.views import APIView
-from rest_framework.generics import CreateAPIView
 from rest_framework.viewsets import ModelViewSet
 
 from .filters import TitleFilter
@@ -46,34 +46,6 @@ from .mixins import CreateListDestroyMixin
 from users.models import User
 
 
-class UserMeView(APIView):
-    """View-класс для роута 'users/me'."""
-
-    permission_classes = (
-        IsAuthenticated,
-    )
-
-    def get(self, request):
-        serializer = UserSerializer(request.user)
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
-
-    def patch(self, request):
-        serializer = UserMeSerializer(
-            request.user,
-            data=request.data,
-            partial=True,
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
-
-
 class UserViewSet(ModelViewSet):
     """Viewset для роута 'users'."""
 
@@ -89,18 +61,27 @@ class UserViewSet(ModelViewSet):
     search_fields = ('username',)
     ordering = ('username',)
 
-    def create(self, request, *args, **kwargs):
-        q = Q()
-        if 'username' in request.data:
-            q |= Q(username=request.data['username'])
-        if 'email' in request.data:
-            q |= Q(email=request.data['email'])
-        if User.objects.filter(q).exists():
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        return super(UserViewSet, self).create(request, *args, **kwargs)
+    @action(
+            url_path='me',
+            url_name='me',
+            methods=['get', 'patch'],
+            detail=False,
+            permission_classes=(IsAuthenticated,)
+    )
+    def user_me_route(self, request):
+        if request.method == 'GET':
+            serializer = UserMeSerializer(request.user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        if request.method == "PATCH":
+            serializer = UserMeSerializer(
+                request.user, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class ObtainJWTTokenViewSet(CreateAPIView):
+class ObtainJWTTokenViewSet(APIView):
     """View-класс для роута 'auth/token/'."""
 
     serializer_class = ObtainJWTTokenSerializer
@@ -111,23 +92,23 @@ class ObtainJWTTokenViewSet(CreateAPIView):
             username=self.kwargs.get('username')
         )
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+    def post(self, request, *args, **kwargs):
+        serializer = ObtainJWTTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = get_object_or_404(
             User,
             username=serializer.validated_data.get('username')
         )
         token = serializer.validated_data.get('confirmation_code')
-        if default_token_generator.check_token(user, token):
-            token = AccessToken.for_user(user)
+        if not default_token_generator.check_token(user, token):
             return Response(
-                {'token': f'{token}'},
-                status=status.HTTP_200_OK,
-            )
-        return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST,
+        )
+        token = AccessToken.for_user(user)
+        return Response(
+            {'token': f'{token}'},
+            status=status.HTTP_200_OK,
         )
 
 
@@ -136,51 +117,9 @@ class SignUpView(APIView):
 
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
-        username = request.data.get('username')
-        email = request.data.get('email')
-        user = User.objects.filter(
-            username=username,
-            email=email,
-        ).first()
-
-        if user:
-            confirmation_code = default_token_generator.make_token(user)
-            send_mail(
-                subject='Регистрация на YaMDb',
-                message=(
-                    f'Здравствуйте, {user.username}.'
-                    f'Ваш код потверждения: {confirmation_code}'
-                ),
-                from_email=None,
-                recipient_list=[user.email],
-            )
-            message = (
-                    f'Здравствуйте, {user.username}.'
-                    f'Ваш код потверждения: {confirmation_code}'
-                ),
-            return Response(
-                message,
-                status=status.HTTP_200_OK
-            )
-
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            username = serializer.validated_data['username']
-            email = serializer.validated_data['email']
-            user = get_object_or_404(User, username=username)
-            confirmation_code = default_token_generator.make_token(user)
-            send_mail(
-                subject='Регистрация на YaMDb',
-                message=(
-                    f'Здравствуйте, {user.username}.'
-                    f'Ваш код потверждения: {confirmation_code}'
-                ),
-                from_email=None,
-                recipient_list=[user.email],
-            )
-
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CategoryViewSet(CreateListDestroyMixin):
@@ -272,15 +211,11 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def _get_review(self):
         title_id = self.kwargs.get('title_id')
-        title = get_object_or_404(
-            Title,
-            id=title_id
-        )
         review_id = self.kwargs.get('review_id')
         return get_object_or_404(
             Review,
             id=review_id,
-            title=title,
+            title=title_id,
         )
 
     def perform_create(self, serializer):
@@ -290,6 +225,4 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
 
     def get_queryset(self):
-        return Comment.objects.filter(
-            review=self._get_review(),
-        )
+        return self._get_review().comments.all()

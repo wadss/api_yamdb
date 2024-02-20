@@ -129,3 +129,17 @@ AUTH_USER_MODEL = 'users.User'
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
+
+MAX_LENGTH_OF_USERNAME = 150
+MAX_LENGTH_OF_EMAIL = 254
+MAX_LENGTH_OF_NAME = 256
+MAX_LENGTH_OF_SLUG = 50
+MIN_VALUE_OF_SCORE = 1
+MAX_VALUE_OF_SCORE = 10
+MESSAGE_FOR_MIN_SCORE = 'Оценка меньше 1 запрещена'
+MESSAGE_FOR_MAX_SCORE = 'Оценка больше 10 запрещена'
+MAX_LENGTH_OF_ROLE = 150
+MESSAGE_FOR_USERNAME_VALIDATOR = (
+    'Никнейм должен быть '
+    'буквенно-цифровым'
+)
