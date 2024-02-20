@@ -168,7 +168,7 @@ class Review(models.Model):
 
     def __str__(self):
         return (f'Отзыв на {self.title} '
-        f'от автора {self.author}')
+                f'от автора {self.author}')
 
 
 class Comment(models.Model):

@@ -7,7 +7,7 @@ from rest_framework import serializers
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from api_yamdb.settings import (
-    MAX_LENGTH_OF_USERNAME, 
+    MAX_LENGTH_OF_USERNAME,
     MAX_LENGTH_OF_EMAIL,
 )
 from users.models import User
@@ -58,7 +58,10 @@ class SignUpSerializer(serializers.ModelSerializer):
         username = validated_data['username']
         email = validated_data['email']
 
-        user, created = User.objects.get_or_create(email=email, defaults={'username': username})
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={'username': username},
+        )
 
         if created:
             confirmation_code = default_token_generator.make_token(user)
@@ -73,7 +76,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             )
 
         return user
-    
+
     def validate(self, data):
         if User.objects.filter(
             username=data.get('username'),
@@ -209,7 +212,6 @@ class TitleWriteSerializer(TitleSerializer):
             }
 
         return representation
-
 
 
 class ReviewSerializer(serializers.ModelSerializer):

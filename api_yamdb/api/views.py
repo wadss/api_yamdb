@@ -1,6 +1,5 @@
 from django.db.models import Avg
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 
@@ -62,11 +61,11 @@ class UserViewSet(ModelViewSet):
     ordering = ('username',)
 
     @action(
-            url_path='me',
-            url_name='me',
-            methods=['get', 'patch'],
-            detail=False,
-            permission_classes=(IsAuthenticated,)
+        url_path='me',
+        url_name='me',
+        methods=['get', 'patch'],
+        detail=False,
+        permission_classes=(IsAuthenticated,)
     )
     def user_me_route(self, request):
         if request.method == 'GET':
@@ -102,9 +101,9 @@ class ObtainJWTTokenViewSet(APIView):
         token = serializer.validated_data.get('confirmation_code')
         if not default_token_generator.check_token(user, token):
             return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         token = AccessToken.for_user(user)
         return Response(
             {'token': f'{token}'},
