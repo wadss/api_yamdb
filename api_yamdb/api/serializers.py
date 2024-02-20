@@ -1,5 +1,5 @@
 from django.core.validators import RegexValidator
-
+from django.db.models import Avg
 from rest_framework import serializers
 
 from users.models import User
@@ -8,11 +8,6 @@ from reviews.models import Category, Genre, Title, Review, Comment
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериалайзер для роута 'users'."""
-
-    username = serializers.RegexField(
-        regex=r'^[\w.@+-]+\Z',
-        max_length=150,
-    )
 
     class Meta:
         model = User
@@ -151,6 +146,40 @@ class TitleWriteSerializer(TitleSerializer):
         many=True,
     )
 
+    rating = serializers.SerializerMethodField()
+
+    def get_rating(self, instance):
+        reviews = instance.reviews.all()
+        if reviews.exists():
+            return reviews.aggregate(Avg('score'))['score__avg']
+        return None
+
+    def to_representation(self, instance):
+        representation = {
+            'id': instance.id,
+            'name': instance.name,
+            'year': instance.year,
+            'rating': self.get_rating(instance),
+            'description': instance.description,
+            'genre': [],
+            'category': None,
+        }
+
+        for genre in instance.genre.all():
+            representation['genre'].append({
+                'name': genre.name,
+                'slug': genre.slug,
+            })
+
+        if instance.category:
+            representation['category'] = {
+                'name': instance.category.name,
+                'slug': instance.category.slug,
+            }
+
+        return representation
+
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     """Сериалайзер для роута 'reviews'."""
@@ -158,14 +187,9 @@ class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.StringRelatedField(
         read_only=True,
     )
-    title = serializers.SlugRelatedField(
-        slug_field='id',
-        many=False,
-        read_only=True,
-    )
 
     def validate(self, data):
-        if not self.context.get('request').method == 'POST':
+        if self.context.get('request').method != 'POST':
             return data
         author = self.context.get('request').user
         title_id = self.context.get('view').kwargs.get('title_id')
@@ -186,7 +210,6 @@ class ReviewSerializer(serializers.ModelSerializer):
             'author',
             'score',
             'pub_date',
-            'title',
         )
 
 

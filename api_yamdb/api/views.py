@@ -54,23 +54,15 @@ class UserMeView(APIView):
     )
 
     def get(self, request):
-        user = get_object_or_404(
-            User,
-            username=request.user.username
-        )
-        serializer = UserSerializer(user)
+        serializer = UserSerializer(request.user)
         return Response(
             serializer.data,
             status=status.HTTP_200_OK,
         )
 
     def patch(self, request):
-        user = get_object_or_404(
-            User,
-            username=request.user.username
-        )
         serializer = UserMeSerializer(
-            user,
+            request.user,
             data=request.data,
             partial=True,
         )
@@ -163,9 +155,9 @@ class SignUpView(APIView):
                 recipient_list=[user.email],
             )
             message = (
-                'Пользователь с такими данными уже зарегистрирован.'
-                'Код подтверждения отправлен на почту.'
-            )
+                    f'Здравствуйте, {user.username}.'
+                    f'Ваш код потверждения: {confirmation_code}'
+                ),
             return Response(
                 message,
                 status=status.HTTP_200_OK

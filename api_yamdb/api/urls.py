@@ -17,22 +17,22 @@ from api.views import (
 router_v1 = routers.DefaultRouter()
 
 router_v1.register(
-    r'users',
+    'users',
     UserViewSet,
     basename='user,'
 )
 router_v1.register(
-    r'categories',
+    'categories',
     CategoryViewSet,
     basename='category',
 )
 router_v1.register(
-    r'genres',
+    'genres',
     GenreViewSet,
     basename='genre',
 )
 router_v1.register(
-    r'titles',
+    'titles',
     TitleViewSet,
     basename='title'
 )
