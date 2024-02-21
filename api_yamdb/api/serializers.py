@@ -1,6 +1,5 @@
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.mail import send_mail
-from django.db.models import Avg
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework import serializers
 
@@ -60,7 +59,7 @@ class SignUpSerializer(serializers.ModelSerializer):
         user, _ = User.objects.get_or_create(
             email=email,
             defaults={'username': username}
-            )
+        )
 
         if user:
             confirmation_code = default_token_generator.make_token(user)
@@ -79,7 +78,7 @@ class SignUpSerializer(serializers.ModelSerializer):
     def validate(self, data):
         existing_user_with_email = User.objects.filter(
             email=data.get('email'),
-            ).first()
+        ).first()
         existing_user_with_username = User.objects.filter(
             username=data.get('username'),
         ).first()
