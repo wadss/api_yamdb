@@ -137,6 +137,8 @@ class GenreSerializer(serializers.ModelSerializer):
 class TitleSerializer(serializers.ModelSerializer):
     """Миксин-сериалайзер для роута 'titles'."""
 
+    rating = serializers.IntegerField(read_only=True, default=None)
+
     class Meta:
         model = Title
         fields = (
@@ -152,8 +154,6 @@ class TitleSerializer(serializers.ModelSerializer):
 
 class TitleReadSerializer(TitleSerializer):
     """Сериалайзер для роута 'titles' на чтение."""
-
-    rating = serializers.IntegerField(read_only=True, default=None)
 
     genre = GenreSerializer(
         read_only=True,
@@ -175,6 +175,8 @@ class TitleWriteSerializer(TitleSerializer):
         queryset=Genre.objects.all(),
         many=True,
     )
+
+    #rating = serializers.SerializerMethodField()
 
     def get_rating(self, instance):
         return getattr(instance, 'rating', None)
