@@ -85,7 +85,6 @@ class SignUpSerializer(serializers.ModelSerializer):
         error_msg = {}
 
         if existing_user_with_email != existing_user_with_username:
-
             if existing_user_with_email:
                 error_msg['email'] = ['Эл. почта уже занята']
 
