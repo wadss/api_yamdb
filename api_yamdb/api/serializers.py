@@ -2,7 +2,6 @@ from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django.contrib.auth.tokens import default_token_generator
-
 from rest_framework import serializers
 
 from reviews.models import Category, Genre, Title, Review, Comment
@@ -58,9 +57,9 @@ class SignUpSerializer(serializers.ModelSerializer):
         username = validated_data['username']
         email = validated_data['email']
 
-        user, created = User.objects.get_or_create(email=email, defaults={'username': username})
+        user, _ = User.objects.get_or_create(email=email, defaults={'username': username})
 
-        if created:
+        if user:
             confirmation_code = default_token_generator.make_token(user)
             send_mail(
                 subject='Регистрация на YaMDb',
@@ -75,23 +74,24 @@ class SignUpSerializer(serializers.ModelSerializer):
         return user
     
     def validate(self, data):
-        if User.objects.filter(
-            username=data.get('username'),
+        existing_user_with_email = User.objects.filter(
             email=data.get('email'),
-        ):
-            return data
-        elif User.objects.filter(
-            username=data.get('username')
-        ):
-            raise serializers.ValidationError(
-                'Никнейм уже занят'
-            )
-        elif User.objects.filter(
-            email=data.get('email')
-        ):
-            raise serializers.ValidationError(
-                'Эл. почта уже занята'
-            )
+        ).first()
+        existing_user_with_username = User.objects.filter(
+            username=data.get('username'),
+        ).first()
+        error_msg = {}
+
+        if existing_user_with_email != existing_user_with_username:
+            
+            if existing_user_with_email:
+                error_msg['email'] = ['Эл. почта уже занята']
+
+            if existing_user_with_username:
+                error_msg['username'] = ['Никнейм уже занят']
+            
+            raise serializers.ValidationError(error_msg)
+
         return data
 
     class Meta:
@@ -105,8 +105,7 @@ class SignUpSerializer(serializers.ModelSerializer):
 class ObtainJWTTokenSerializer(serializers.Serializer):
     """Сериалайзер для роута 'auth/token/'."""
 
-    username = serializers.RegexField(
-        regex=r'^[\w.@+-]+\Z',
+    username = serializers.CharField(
         max_length=MAX_LENGTH_OF_USERNAME,
         validators=[
             UnicodeUsernameValidator(
