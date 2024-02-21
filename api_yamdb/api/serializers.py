@@ -69,7 +69,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             ),
             from_email=None,
             recipient_list=[user.email],
-            )
+        )
         return user
 
     def validate(self, data):
@@ -171,7 +171,7 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return TitleReadSerializer(instance).data
-    
+
     class Meta:
         model = Title
         fields = (
