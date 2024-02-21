@@ -136,8 +136,8 @@ MAX_LENGTH_OF_NAME = 256
 MAX_LENGTH_OF_SLUG = 50
 MIN_VALUE_OF_SCORE = 1
 MAX_VALUE_OF_SCORE = 10
-MESSAGE_FOR_MIN_SCORE = 'Оценка меньше 1 запрещена'
-MESSAGE_FOR_MAX_SCORE = 'Оценка больше 10 запрещена'
+MESSAGE_FOR_MIN_SCORE = f'Оценка меньше {MIN_VALUE_OF_SCORE} запрещена'
+MESSAGE_FOR_MAX_SCORE = f'Оценка больше {MAX_VALUE_OF_SCORE} запрещена'
 MAX_LENGTH_OF_ROLE = 150
 MESSAGE_FOR_USERNAME_VALIDATOR = (
     'Никнейм должен быть '

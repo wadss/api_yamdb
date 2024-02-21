@@ -60,19 +60,16 @@ class SignUpSerializer(serializers.ModelSerializer):
             email=email,
             defaults={'username': username}
         )
-
-        if user:
-            confirmation_code = default_token_generator.make_token(user)
-            send_mail(
-                subject='Регистрация на YaMDb',
-                message=(
-                    f'Здравствуйте, {user.username}. '
-                    f'Ваш код подтверждения: {confirmation_code}'
-                ),
-                from_email=None,
-                recipient_list=[user.email],
+        confirmation_code = default_token_generator.make_token(user)
+        send_mail(
+            subject='Регистрация на YaMDb',
+            message=(
+                f'Здравствуйте, {user.username}. '
+                f'Ваш код подтверждения: {confirmation_code}'
+            ),
+            from_email=None,
+            recipient_list=[user.email],
             )
-
         return user
 
     def validate(self, data):
@@ -134,10 +131,16 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
-class TitleSerializer(serializers.ModelSerializer):
-    """Миксин-сериалайзер для роута 'titles'."""
+class TitleReadSerializer(serializers.ModelSerializer):
+    """Сериалайзер для роута 'titles' на чтение."""
 
     rating = serializers.IntegerField(read_only=True, default=None)
+
+    genre = GenreSerializer(
+        read_only=True,
+        many=True,
+    )
+    category = CategorySerializer(read_only=True)
 
     class Meta:
         model = Title
@@ -152,17 +155,7 @@ class TitleSerializer(serializers.ModelSerializer):
         )
 
 
-class TitleReadSerializer(TitleSerializer):
-    """Сериалайзер для роута 'titles' на чтение."""
-
-    genre = GenreSerializer(
-        read_only=True,
-        many=True,
-    )
-    category = CategorySerializer(read_only=True)
-
-
-class TitleWriteSerializer(TitleSerializer):
+class TitleWriteSerializer(serializers.ModelSerializer):
     """Сериалайзер для роута 'titles' на запись."""
 
     category = serializers.SlugRelatedField(
@@ -176,13 +169,19 @@ class TitleWriteSerializer(TitleSerializer):
         many=True,
     )
 
-    def get_rating(self, instance):
-        return getattr(instance, 'rating', None)
-
     def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['rating'] = self.get_rating(instance)
-        return representation
+        return TitleReadSerializer(instance).data
+    
+    class Meta:
+        model = Title
+        fields = (
+            'id',
+            'name',
+            'year',
+            'description',
+            'genre',
+            'category',
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):
