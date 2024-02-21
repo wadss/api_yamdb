@@ -2,7 +2,6 @@ from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django.contrib.auth.tokens import default_token_generator
-
 from rest_framework import serializers
 
 from reviews.models import Category, Genre, Title, Review, Comment
@@ -11,7 +10,7 @@ from api_yamdb.settings import (
     MAX_LENGTH_OF_EMAIL,
 )
 from users.models import User
-from .validators import validate_username
+from users.validators import validate_username
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -58,12 +57,12 @@ class SignUpSerializer(serializers.ModelSerializer):
         username = validated_data['username']
         email = validated_data['email']
 
-        user, created = User.objects.get_or_create(
+        user, _ = User.objects.get_or_create(
             email=email,
-            defaults={'username': username},
-        )
+            defaults={'username': username}
+            )
 
-        if created:
+        if user:
             confirmation_code = default_token_generator.make_token(user)
             send_mail(
                 subject='Регистрация на YaMDb',
@@ -78,23 +77,23 @@ class SignUpSerializer(serializers.ModelSerializer):
         return user
 
     def validate(self, data):
-        if User.objects.filter(
-            username=data.get('username'),
+        existing_user_with_email = User.objects.filter(
             email=data.get('email'),
-        ):
-            return data
-        elif User.objects.filter(
-            username=data.get('username')
-        ):
-            raise serializers.ValidationError(
-                'Никнейм уже занят'
-            )
-        elif User.objects.filter(
-            email=data.get('email')
-        ):
-            raise serializers.ValidationError(
-                'Эл. почта уже занята'
-            )
+            ).first()
+        existing_user_with_username = User.objects.filter(
+            username=data.get('username'),
+        ).first()
+        error_msg = {}
+
+        if existing_user_with_email != existing_user_with_username:
+
+            if existing_user_with_email:
+                error_msg['email'] = ['Эл. почта уже занята']
+
+            if existing_user_with_username:
+                error_msg['username'] = ['Никнейм уже занят']
+
+            raise serializers.ValidationError(error_msg)
         return data
 
     class Meta:
@@ -108,8 +107,7 @@ class SignUpSerializer(serializers.ModelSerializer):
 class ObtainJWTTokenSerializer(serializers.Serializer):
     """Сериалайзер для роута 'auth/token/'."""
 
-    username = serializers.RegexField(
-        regex=r'^[\w.@+-]+\Z',
+    username = serializers.CharField(
         max_length=MAX_LENGTH_OF_USERNAME,
         validators=[
             UnicodeUsernameValidator(
@@ -141,8 +139,6 @@ class GenreSerializer(serializers.ModelSerializer):
 class TitleSerializer(serializers.ModelSerializer):
     """Миксин-сериалайзер для роута 'titles'."""
 
-    rating = serializers.IntegerField(read_only=True)
-
     class Meta:
         model = Title
         fields = (
@@ -158,6 +154,8 @@ class TitleSerializer(serializers.ModelSerializer):
 
 class TitleReadSerializer(TitleSerializer):
     """Сериалайзер для роута 'titles' на чтение."""
+
+    rating = serializers.IntegerField(read_only=True, default=None)
 
     genre = GenreSerializer(
         read_only=True,
@@ -183,34 +181,11 @@ class TitleWriteSerializer(TitleSerializer):
     rating = serializers.SerializerMethodField()
 
     def get_rating(self, instance):
-        reviews = instance.reviews.all()
-        if reviews.exists():
-            return reviews.aggregate(Avg('score'))['score__avg']
-        return None
+        return getattr(instance, 'rating', None)
 
     def to_representation(self, instance):
-        representation = {
-            'id': instance.id,
-            'name': instance.name,
-            'year': instance.year,
-            'rating': self.get_rating(instance),
-            'description': instance.description,
-            'genre': [],
-            'category': None,
-        }
-
-        for genre in instance.genre.all():
-            representation['genre'].append({
-                'name': genre.name,
-                'slug': genre.slug,
-            })
-
-        if instance.category:
-            representation['category'] = {
-                'name': instance.category.name,
-                'slug': instance.category.slug,
-            }
-
+        representation = super().to_representation(instance)
+        representation['rating'] = self.get_rating(instance)
         return representation
 
 

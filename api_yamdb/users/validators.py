@@ -7,4 +7,3 @@ def validate_username(username):
             'Использовать имя "me" в качестве '
             'никнейма запрещено'
         )
-    return username

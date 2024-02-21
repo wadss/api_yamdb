@@ -2,10 +2,9 @@ from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
 
-from api.validators import validate_username
+from users.validators import validate_username
 from api_yamdb.settings import (
     MAX_LENGTH_OF_USERNAME,
-    MAX_LENGTH_OF_EMAIL,
     MAX_LENGTH_OF_ROLE,
     MESSAGE_FOR_USERNAME_VALIDATOR,
 )
@@ -39,7 +38,6 @@ class User(AbstractUser):
 
     email = models.EmailField(
         verbose_name='Электронная почта',
-        max_length=MAX_LENGTH_OF_EMAIL,
         unique=True,
     )
     bio = models.TextField(
