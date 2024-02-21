@@ -176,8 +176,6 @@ class TitleWriteSerializer(TitleSerializer):
         many=True,
     )
 
-    rating = serializers.SerializerMethodField()
-
     def get_rating(self, instance):
         return getattr(instance, 'rating', None)
 
